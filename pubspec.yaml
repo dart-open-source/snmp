@@ -1,9 +1,11 @@
 name: snmp
 description: A starting point for Dart SNMP protocol, for Using IP(network) to Easyly access snmp data.
 version: 0.0.1
-homepage: https://github.com/almpazel/dart-snmp
+homepage: https://gitee.com/almpazel/dart-snmp.git
 
-## pub publish --server=https://pub.dartlang.org
+## export http_proxy=socks5h://localhost:1080
+## export https_proxy=socks5h://localhost:1080
+## pub publish --server=https://pub.dartlang.org -v
 
 environment:
   sdk: '>=2.8.1 <3.0.0'
