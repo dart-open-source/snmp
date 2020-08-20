@@ -6,26 +6,55 @@ import 'package:snmp/src/byter.dart';
 
 import 'ber.dart';
 
+///
+/// About:->
+/// Copyright 2020 Alm.Pazel
+/// License-Identifier: MIT
+///
+///
+/// Refrences:->
+/// https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol
+/// https://tools.ietf.org/html/rfc1228
+///
 class PDU {
   static const int HEADER = 0x30;
+  static const int GET = (BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR);
+  static const int GETNEXT = (BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR | 0x1);
+  static const int RESPONSE = (BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR | 0x2);
+  static const int SET = (BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR | 0x3);
+  static const int V1TRAP = (BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR | 0x4);
+  static const int GETBULK = (BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR | 0x5);
+  static const int INFORM = (BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR | 0x6);
+  static const int TRAP = (BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR | 0x7);
+  static const int NOTIFICATION = TRAP;
+  static const int REPORT = (BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR | 0x8);
 
   OID oid;
-  String community = 'public';
+
+  int version=0;
+
+  String community ='public';
+
   Byter raw = Byter();
   Byter value = Byter();
+
+  int requestId = 0000000001;
+  int requestStatus = 0;
+  int requestIndex = 0;
 
   String get id => oid.id;
 
   @override
   String toString() {
-    return 'PDU{$oid->$value, community: $community, raw: $raw}';
+    return 'PDU<$requestId,$requestStatus,$requestIndex>{ $oid->$value, community:$community, raw:$raw }';
   }
+
+  String toHexString() => raw.toHexString();
 
   Map _option = {};
 
-  Byter _version = Byter(hex.decode('02010004'));
-  Byter _community = Byter();
-  Byter _request = Byter();
+  Byter _community;
+  Byter body = Byter();
 
   PDU(dynamic input, {Map option}) {
     _option = option ?? {};
@@ -33,80 +62,53 @@ class PDU {
     if (input is Byter) decode(input);
   }
 
-  void communityEncode() {
-    var com = (_option['community'] ?? community).codeUnits;
-    _community.clear();
-    _community.addAll(BER.encodeLength(com.length));
-    _community.addAll(com);
-  }
+  static int get timeint => DateTime.now().millisecondsSinceEpoch;
 
-  void requestEncode() {
-    var oidD = oid.encode();
-    _request.clear();
-    _request.add(0xa0); //request
-    var req = <int>[];
-    req.addAll(hex.decode('020463C8A0F6')); //02+request-id-length+request-id
-    req.addAll(hex.decode('020100')); //02+request-status-length+request-status
-    req.addAll(hex.decode('020100')); //02+request-index-length+request-index
-    req.addAll(hex.decode('3012')); //var-bind-list+length
-    req.addAll(hex.decode('3010')); //var-bind-list+length
-    _request.addAll(BER.encodeLength(oidD.length + req.length + 2)); //request+length
-    _request.addAll(req); //req
-    _request.addAll(oidD.all); //oid
-    _request.add(0x05); //footer
-    _request.add(0x00);
-  }
+  void requestEncode() {}
 
-  void decode(Byter byter) {
-    raw = byter.clone();
-    var header = byter.byte();
-    if (header != HEADER) throw Exception('Wrong pdu header $HEADER:$header');
-    var length = BER.decodeLength(byter);
-    _version = byter.bytes(4);
-    communityDecode(byter);
-    requestDecode(byter);
+  void decode(Byter input) {
+    raw = input.clone();
+    var byter = BER.decode(input);
+    var _version = BER.decode(byter, 0x02);
+    version=int.parse(_version.toHexString(),radix: 16);
+    community = utf8.decode(BER.decode(byter, 0x04).all);
+    var type=byter.byte();
+    byter.eat(type);
+    body = BER.decode(byter, type);
+    var req = body.clone();
+    var reqId = BER.decode(req, 0x02);
+    requestId = int.parse(reqId.toHexString(), radix: 16);
+    var reqState = BER.decode(req, 0x02);
+    requestStatus = int.parse(reqState.toHexString(), radix: 16);
+    var reqIndex = BER.decode(req, 0x02);
+    requestStatus = int.parse(reqIndex.toHexString(), radix: 16);
+    var v1 = BER.decode(req);
+    var v2 = BER.decode(v1);
+    oid = OID.decode(v2);
+    value = byter;
   }
 
   void encode(OID oid) {
     this.oid = oid;
-    requestEncode();
-    communityEncode();
+    var oidByter = oid.encode();
+    oidByter.add(0x05);
+    oidByter.add(0x00);
+    var req = BER.encode(BER.encode(oidByter)); //oid
+    req.eat(BER.encode(Byter([0]), 0x02)); //request index
+    req.eat(BER.encode(Byter([0]), 0x02)); //request status
+    requestId = (timeint / 1000).round();
+    req.eat(BER.encode(Byter(hex.decode(requestId.toRadixString(16))), 0x02)); //request id
+    body = BER.encode(req, GET);
+
     var _pdu = Byter();
-    _pdu.add(HEADER); //header
-    var length = 4 + _community.length + _request.length;
-    _pdu.addAll(BER.encodeLength(length)); //pud length
-    _pdu.addAll(_version.all); //version info
-    _pdu.addAll(_community.all); //community-length+community
-    _pdu.addAll(_request.all);
-    raw = _pdu.clone();
-  }
+    _pdu.add(BER.encode(Byter([version]), 0x02)); //version info
+    _pdu.add(BER.encode(Byter(community.codeUnits), 0x04)); //community
+    _pdu.add(body);
 
-  void communityDecode(Byter byter) {
-    var len = byter.byte();
-    var com = byter.bytes(len);
-    _community = com;
-    _community.eat(len);
-    community = utf8.decode(com.all).trim();
-  }
-
-  void requestDecode(Byter byter) {
-    var type = byter.byte();
-    var reqL = byter.byte();
-    _request = byter.bytes(reqL);
-    var decode = _request.clone();
-    decode.byte();
-    var reqSL = decode.byte();
-    var reqS = decode.bytes(reqSL);
-    decode.byte();
-    var reqEL = decode.byte();
-    var reqE = decode.bytes(reqEL);
-    decode.byte();
-    var reqIL = decode.byte();
-    var reqI = decode.bytes(reqIL);
-    var valbind = decode.bytes(4);
-    oid = OID.decode(decode);
-    value = decode;
+    raw = BER.encode(_pdu,HEADER);
   }
 
   List<int> bytes() => raw.all;
+
+  static PDU fromOid(String s) => PDU(OID(s));
 }

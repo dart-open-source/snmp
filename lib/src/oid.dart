@@ -6,6 +6,11 @@ import 'byter.dart';
 /// Copyright 2020 Alm.Pazel
 /// License-Identifier: MIT
 ///
+///
+/// Refrences:->
+/// https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol
+/// https://tools.ietf.org/html/rfc1228
+///
 class OID {
   final String value;
   List<int> list;
@@ -13,7 +18,9 @@ class OID {
   static const int HEADER = 0x06;
 
   OID(this.value) {
-    list = value.split('.').map((e) => int.parse(e)).toList();
+    var nv=value;
+    nv=nv.replaceAll(',', '.');
+    list = nv.split('.').map((e) => int.parse(e.trim())).toList();
   }
   String get id=>list.join('.');
 
@@ -42,7 +49,7 @@ class OID {
   }
 
   @override
-  String toString() => 'OID{ ${list.toString().replaceAll('[', '').replaceAll(']', '')} }';
+  String toString() => 'OID<${list.length}>{ ${list.join('.')} }';
 
   static OID decode(Byter byter) {
     int subidentifier;

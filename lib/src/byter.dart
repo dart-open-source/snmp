@@ -1,3 +1,16 @@
+import 'package:convert/convert.dart';
+
+///
+/// About:->
+/// Copyright 2020 Alm.Pazel
+/// License-Identifier: MIT
+///
+///
+/// Refrences:->
+/// https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol
+/// https://tools.ietf.org/html/rfc1228
+///
+
 class Byter {
   final List<int> _bytes = [];
 
@@ -9,6 +22,7 @@ class Byter {
 
   @override
   String toString() => 'Byter{${length}}';
+  String toHexString() => hex.encode(all);
 
   Byter([List<int> ints]) {
     _bytes.clear();
@@ -29,12 +43,20 @@ class Byter {
 
   int byte() => bytes(1)?.first;
 
-  void add(int b) => _bytes.add(b);
+  void add(dynamic b) {
+    if(b is int) _bytes.add(b);
+    if(b is Byter) addAll(b.all);
+  }
 
   void addAll(List<int> os) => os.forEach(add);
 
-  void eat(int b) => _bytes.insert(0, b);
+  void eat(dynamic b){
+    if(b is int) _bytes.insert(0, b);
+    if(b is Byter) eatAll(b.all);
+  }
 
-  void eatAll(List<int> os) => os.forEach(eat);
+  void eatAll(List<int> os) => os.reversed.forEach(eat);
+
   Byter clone()  => Byter(all);
+
 }

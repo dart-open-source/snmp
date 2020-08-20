@@ -1,9 +1,13 @@
 import 'package:snmp/src/byter.dart';
-
 ///
 /// About:->
 /// Copyright 2020 Alm.Pazel
 /// License-Identifier: MIT
+///
+///
+/// Refrences:->
+/// https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol
+/// https://tools.ietf.org/html/rfc1228
 ///
 
 class BER {
@@ -168,5 +172,19 @@ class BER {
   static void checkLength(Byter byter, int length) {
     if (!checkValueLength) return;
     if ((length < 0) || (length > byter.length)) throw Exception('The encoded length $length exceeds,input ${byter.length}');
+  }
+
+  static Byter encode(Byter input,[int type=BER.SEQUENCE]) {
+    var byter=Byter();
+    byter.add(type);
+    byter.addAll(encodeLength(input.length));
+    byter.addAll(input.all);
+    return byter;
+  }
+
+  static Byter decode(Byter input,[int type=BER.SEQUENCE]) {
+    var t=input.byte();
+    if(t!=type) throw Exception('The encoded type $t nut equal $type');
+    return input.bytes(decodeLength(input));
   }
 }
