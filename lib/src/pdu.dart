@@ -53,13 +53,13 @@ class PDU {
 
   Map _option = {};
 
-  Byter _community;
   Byter body = Byter();
-
+  /// input should be OID, Byter , hexStr
   PDU(dynamic input, {Map option}) {
     _option = option ?? {};
     if (input is OID) encode(input);
     if (input is Byter) decode(input);
+    if (input is String) decode(Byter(input));
   }
 
   static int get timeint => DateTime.now().millisecondsSinceEpoch;
@@ -85,26 +85,24 @@ class PDU {
     var v1 = BER.decode(req);
     var v2 = BER.decode(v1);
     oid = OID.decode(v2);
-    value = byter;
+    value = v2;
   }
 
   void encode(OID oid) {
     this.oid = oid;
-    var oidByter = oid.encode();
-    oidByter.add(0x05);
-    oidByter.add(0x00);
-    var req = BER.encode(BER.encode(oidByter)); //oid
+    var oids = oid.encode(); //oid
+    oids.add(0x05);
+    oids.add(0x00);
+    var req = BER.encode(BER.encode(oids)); //var-bind
     req.eat(BER.encode(Byter([0]), 0x02)); //request index
     req.eat(BER.encode(Byter([0]), 0x02)); //request status
     requestId = (timeint / 1000).round();
     req.eat(BER.encode(Byter(hex.decode(requestId.toRadixString(16))), 0x02)); //request id
     body = BER.encode(req, GET);
-
     var _pdu = Byter();
     _pdu.add(BER.encode(Byter([version]), 0x02)); //version info
     _pdu.add(BER.encode(Byter(community.codeUnits), 0x04)); //community
     _pdu.add(body);
-
     raw = BER.encode(_pdu,HEADER);
   }
 

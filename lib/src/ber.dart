@@ -184,7 +184,7 @@ class BER {
 
   static Byter decode(Byter input,[int type=BER.SEQUENCE]) {
     var t=input.byte();
-    if(t!=type) throw Exception('The encoded type $t nut equal $type');
+    if(t!=type) throw Exception('The encoded type $t not equal type:$type ');
     return input.bytes(decodeLength(input));
   }
 }

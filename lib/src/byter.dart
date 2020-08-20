@@ -24,9 +24,10 @@ class Byter {
   String toString() => 'Byter{${length}}';
   String toHexString() => hex.encode(all);
 
-  Byter([List<int> ints]) {
+  Byter([dynamic input]) {
     _bytes.clear();
-    if (ints != null) _bytes.addAll(ints);
+    if (input is List<int>) _bytes.addAll(input);
+    if (input is String) _bytes.addAll(hex.decode(input));
   }
 
   int get length => _bytes.length;
@@ -58,5 +59,7 @@ class Byter {
   void eatAll(List<int> os) => os.reversed.forEach(eat);
 
   Byter clone()  => Byter(all);
+
+  int toInt({int radix=16}) =>int.parse(toHexString(),radix: radix);
 
 }

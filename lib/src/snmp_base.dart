@@ -46,7 +46,7 @@ class SnmpPack {
 
   /// @oid example OID('1.3.6.xxxx.x.x')
   /// @to example 0.0.0.0:161
-  Future<PDU> get(PDU pdu, {String to,Duration timeOut}) async {
+  Future<PDU> get(PDU pdu,String to,{Duration timeOut}) async {
     var uri=to.split(':');
     completer[pdu.id]=Completer<PDU>();
     socket.send(pdu.bytes(), InternetAddress(uri.first), int.parse(uri.last));
